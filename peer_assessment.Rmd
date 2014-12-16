@@ -1,0 +1,77 @@
+---
+title: "peer assesment2"
+author: "Student"
+date: "Monday, December 15, 2014"
+output:
+  html_document:
+    keep_md: yes
+---
+
+##Reproducible Research: Peer Assessment 2
+
+Title: Impact of Severe Weather Events on Public Health and Economy in the United States
+
+
+Synopsis:
+1. Excessive heat and tornado were the main weather related most harmful events to public health such as fatalities and injuries.
+2. Wind and Flood related weather events were the main weather events that caused major economic losses.
+
+Data Processing:
+#Analyses:
+
+The main aim of this analyses is to assess the different weather events in USA on public health and economy.  This data was collected from U.S. National Oceanic and Atmospheric Administration's (NOAA) from 1950 - 2011.
+
+library(knitr)
+setwd("~/R/R_lectures/Data_cousera/reproducible/)
+knit(paste0(Peer_assessment2, ".Rmd"), encoding = "utf-8")
+system(paste0("pandoc -o ", Peer_assessment2, ".docx ", Peer_assessment2, ".md"))
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2","~/R/R_lectures/Data_cousera/reproducible/storm_data.zip")
+
+```{r}
+storm_data <- read.csv("~/R/R_lectures/Data_cousera/reproducible/storm_data.zip")
+head(storm_data)
+summary(storm_data)
+#types of events (as indicated in the EVTYPE variable) that are most harmful with respect to population health: fatalities, Injuries, Property damage, crop damage
+#Economic damage is total of property damage and crop damage
+library(plyr)
+storm_data$ECODMG <- storm_data$PROPDMG +storm_data$CROPDMG
+storm_data$year <- as.numeric(format(as.Date(storm_data$BGN_DATE, format = "%m/%d/%Y %H:%M:%S"), "%Y"))
+#Since most of the datapoints are seen after 1990, the data is filtered for year 1990 and above.
+library(dplyr)
+storm_data1 <-filter(storm_data, year>1990)
+#This table indicates that most data is captured from this dataset from 1990
+```
+
+```{r}
+library(plyr)
+Damage_byEvent = ddply(storm_data1,"EVTYPE" , summarize, meanFA = mean(FATALITIES), totalFA = sum(FATALITIES), meanIN = mean(INJURIES), totalIN = sum(INJURIES), meanECO = mean(ECODMG), totalECO = sum(ECODMG))
+#Cleanup the event type as the data needs some regular expressions clean up
+Damage_byEvent$EVTYPE <- gsub(".*HEAT","HEAT", Damage_byEvent$EVTYPE)
+Damage_byEvent$EVTYPE <- gsub("HEAT WAVE","HEAT", Damage_byEvent$EVTYPE)
+Damage_byEvent$EVTYPE <- gsub("FLASH FLOOD|HEAVY RAIN", "FLOOD", Damage_byEvent$EVTYPE)
+Damage_byEvent$EVTYPE <- gsub("EXTREME COLD","WIND CHILL", Damage_byEvent$EVTYPE)
+Damage_byEvent$EVTYPE <- gsub("BLIZZARD|HEAVY SNOW|ICE STORM","WINTER STORM", Damage_byEvent$EVTYPE)
+Damage_byEvent$EVTYPE <- gsub("RIP CURRENTS|HIGH SURF","RIP CURRENT",Damage_byEvent$EVTYPE)
+Damage_byEvent$EVTYPE <- gsub("WINDS","WIND",Damage_byEvent$EVTYPE)
+Damage_byEvent$EVTYPE <- gsub("(.*)WIND","WIND", Damage_byEvent$EVTYPE)
+Top_fatal <- Damage_byEvent[order(-Damage_byEvent$totalFA), ][1:10, ]
+Top_injury <- Damage_byEvent[order(-Damage_byEvent$totalIN), ][1:10, ]
+Top_Economicdamage <- Damage_byEvent[order(-Damage_byEvent$totalECO), ][1:10, ]
+```
+Results: 
+Figure1a : List the number of events by year
+Figure 1b: List teh number of events for the recent years
+Figure 2a: Number of fatalaties caused by weather events
+Figure 2b: Number of injuries caused by weather events
+Figure 3: Number of economic damages(property and crop damages) for all weather events
+```{r}
+par(mfrow = c(1, 2), mar = c(12, 4, 3, 2), mgp = c(3, 1, 0), cex = 0.8)
+hist(storm_data$year, breaks = 30, main = "Weather Events for all years",  col = "green")
+hist(storm_data1$year, breaks = 30, main = "Weather Events for from 1990",  col = "green")
+par(mfrow = c(1, 2), mar = c(12, 4, 3, 2), mgp = c(3, 1, 0), cex = 0.8)
+barplot(Top_fatal$totalFA, las = 3, names.arg = Top_fatal$EVTYPE, main = "Weather Events With The Top 10 Highest Fatalities", 
+    ylab = "number of fatalities", col = "blue")
+barplot(Top_injury$totalIN, las = 3, names.arg = Top_injury$EVTYPE, main = "Weather Events With the Top 10 Highest Injuries", 
+    ylab = "number of injuries", col = "blue")
+    barplot(Top_Economicdamage$totalECO, las = 3, names.arg = Top_Economicdamage$EVTYPE, main ="Economic damage :Property damage and crop damage",ylab = "number of crop and property damages", col = "red")
+```
